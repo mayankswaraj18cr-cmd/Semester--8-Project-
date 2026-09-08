@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Serverless Container Deployment Platform</title>
+<style>
+  :root{
+    --bg:#0d1520;
+    --panel:#141f30;
+    --panel2:#182640;
+    --accent:#5b8cff;
+    --accent2:#7ee0c3;
+    --text:#e8edf5;
+    --muted:#8ea0bd;
+    --border:#233350;
+    --ok:#4ade80;
+    --warn:#f5a83f;
+    --danger:#ff6b6b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:0; max-width:480px; margin:0 auto;
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  header{
+    padding:20px 18px 14px; text-align:center;
+    background:linear-gradient(160deg,#152238,#0d1520);
+    border-bottom:1px solid var(--border);
+  }
+  header h1{margin:0 0 4px; font-size:17px; letter-spacing:.3px;}
+  header p{margin:0; color:var(--muted); font-size:12px;}
+  .badges{display:flex; gap:6px; justify-content:center; margin-top:10px; flex-wrap:wrap;}
+  .badge{
+    font-size:10.5px; padding:4px 9px; border-radius:20px;
+    background:var(--panel2); color:var(--accent2); border:1px solid var(--border);
+  }
+  main{padding:16px;}
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:16px; margin-bottom:14px;
+  }
+  .card h2{
+    font-size:13px; text-transform:uppercase; letter-spacing:.6px;
+    color:var(--accent2); margin:0 0 12px;
+  }
+  .metric-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;}
+  .metric{
+    background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:12px;
+  }
+  .metric .label{font-size:10.5px; color:var(--muted); text-transform:uppercase;}
+  .metric .value{font-size:20px; font-weight:700; margin-top:4px;}
+  .metric .value.ok{color:var(--ok);}
+  .metric .value.warn{color:var(--warn);}
+  .status-row{display:flex; align-items:center; gap:8px; margin-top:4px;}
+  .status-dot{width:8px; height:8px; border-radius:50%; background:var(--ok);}
+  .status-dot.scaling{background:var(--warn); animation:pulse 1s infinite;}
+  @keyframes pulse{50%{opacity:.4;}}
+  .container-grid{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;}
+  .container-box{
+    width:44px; height:44px; border-radius:8px; background:rgba(74,222,128,.15);
+    border:1.5px solid var(--ok); display:flex; align-items:center; justify-content:center;
+    font-size:16px; transition:all .3s;
+  }
+  .container-box.new{animation:popin .4s;}
+  @keyframes popin{from{transform:scale(0); opacity:0;} to{transform:scale(1); opacity:1;}}
+  input[type=range]{width:100%; margin:10px 0;}
+  .slider-label{display:flex; justify-content:space-between; font-size:12px; color:var(--muted);}
+  button{
+    -webkit-appearance:none; border:none; cursor:pointer;
+    font-family:inherit; font-weight:600;
+  }
+  .btn-primary{
+    width:100%; padding:12px; border-radius:9px; background:var(--accent);
+    color:#04102c; font-size:14px; margin-top:8px;
+  }
+  .btn-primary:active{transform:scale(.98);}
+  .log-box{
+    font-size:11.5px; color:var(--muted); line-height:1.7; max-height:180px; overflow-y:auto;
+    margin-top:10px; border-top:1px solid var(--border); padding-top:10px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+  }
+  .log-box .ok-line{color:var(--ok);}
+  .log-box .warn-line{color:var(--warn);}
+  .arch-flow{display:flex; flex-direction:column; align-items:center; gap:0;}
+  .arch-node{
+    background:var(--panel2); border:1px solid var(--border); border-radius:9px;
+    padding:9px 20px; font-size:12.5px; font-weight:700; color:var(--text); text-align:center; width:100%;
+  }
+  .arch-arrow{color:var(--accent); font-size:15px; padding:2px 0;}
+  pre.code{
+    background:#0a1220; border:1px solid var(--border); border-radius:10px;
+    padding:12px; font-size:10.5px; line-height:1.55; overflow-x:auto;
+    font-family:ui-monospace,Menlo,Consolas,monospace; color:#c9d6ea;
+  }
+  .kw{color:#5b8cff;} .tp{color:#7ee0c3;} .cm{color:#5b7291;} .str{color:#f5a83f;} .fn{color:#c9a5f0;}
+  .toggle-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .pill-btn{
+    font-size:11px; padding:5px 10px; border-radius:8px; background:var(--panel2);
+    color:var(--accent2); border:1px solid var(--border);
+  }
+  table.spec{width:100%; border-collapse:collapse; font-size:12.5px;}
+  table.spec td{padding:7px 4px; border-bottom:1px solid var(--border);}
+  table.spec td:first-child{color:var(--muted);}
+  table.spec td:last-child{text-align:right; font-weight:600;}
+  .app-list{list-style:none; padding:0; margin:0; display:flex; flex-wrap:wrap; gap:6px;}
+  .app-list li{
+    font-size:11.5px; padding:6px 10px; border-radius:8px; background:var(--panel2);
+    color:var(--text); border:1px solid var(--border);
+  }
+  footer{
+    text-align:center; padding:18px 16px 26px; font-size:11px; color:var(--muted);
+    border-top:1px solid var(--border);
+  }
+  footer a{color:var(--accent);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Serverless Container Deployment Platform</h1>
+  <p>Cloud Computing &amp; Distributed Systems &nbsp;•&nbsp; GSSIPU Semester 8</p>
+  <div class="badges">
+    <span class="badge">Cloud-Native Deployment System</span>
+    <span class="badge">Advanced / Final-Year</span>
+  </div>
+</header>
+
+<main>
+
+  <div class="card">
+    <h2>▸ Live Deployment Dashboard</h2>
+    <div class="metric-grid">
+      <div class="metric">
+        <div class="label">Status</div>
+        <div class="status-row">
+          <span class="status-dot" id="statusDot"></span>
+          <span class="value ok" id="statusValue" style="font-size:15px;">Running</span>
+        </div>
+      </div>
+      <div class="metric">
+        <div class="label">Instances Active</div>
+        <div class="value" id="instanceValue">1</div>
+      </div>
+      <div class="metric">
+        <div class="label">CPU Usage</div>
+        <div class="value" id="cpuValue">12%</div>
+      </div>
+      <div class="metric">
+        <div class="label">Response Time</div>
+        <div class="value" id="respValue">85ms</div>
+      </div>
+    </div>
+
+    <label class="slider-label"><span>Simulated Traffic</span><span id="userCount">100 users</span></label>
+    <input type="range" id="userSlider" min="0" max="20000" step="100" value="100">
+
+    <div class="container-grid" id="containerGrid"></div>
+
+    <div class="log-box" id="logBox"></div>
+  </div>
+
+  <div class="card">
+    <h2>▸ System Architecture</h2>
+    <div class="arch-flow">
+      <div class="arch-node">DEVELOPER</div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-node">GIT REPOSITORY</div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-node">CI/CD PIPELINE</div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-node">DOCKER CONTAINER</div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-node">CLOUD PLATFORM</div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-node">USERS</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>▸ Technologies Used</h2>
+    <table class="spec">
+      <tr><td>Programming</td><td>Python</td></tr>
+      <tr><td>Cloud</td><td>AWS / GCP</td></tr>
+      <tr><td>Containers</td><td>Docker</td></tr>
+      <tr><td>Orchestration</td><td>Kubernetes</td></tr>
+      <tr><td>APIs</td><td>REST API</td></tr>
+      <tr><td>Database</td><td>PostgreSQL</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="toggle-row">
+      <h2 style="margin:0;">▸ Dockerfile</h2>
+      <button class="pill-btn" id="toggleDockerBtn">Show</button>
+    </div>
+    <div id="dockerBox" style="display:none;">
+<pre class="code"><span class="kw">FROM</span> python:3.11
+
+<span class="kw">WORKDIR</span> /app
+
+<span class="kw">COPY</span> . .
+
+<span class="kw">RUN</span> pip install -r requirements.txt
+
+<span class="kw">CMD</span> [<span class="str">"python"</span>,<span class="str">"app.py"</span>]</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="toggle-row">
+      <h2 style="margin:0;">▸ Auto-Scaling Logic (Python)</h2>
+      <button class="pill-btn" id="toggleScaleBtn">Show</button>
+    </div>
+    <div id="scaleBox" style="display:none;">
+<pre class="code">users = 5000
+
+<span class="kw">if</span> users > 1000:
+    <span class="fn">print</span>(<span class="str">"Launch New Container"</span>)
+<span class="kw">else</span>:
+    <span class="fn">print</span>(<span class="str">"Current Resources Enough"</span>)</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>▸ Applications</h2>
+    <ul class="app-list">
+      <li>SaaS Platforms</li>
+      <li>E-Commerce Systems</li>
+      <li>Streaming Services</li>
+      <li>Enterprise Applications</li>
+      <li>Startup Products</li>
+    </ul>
+  </div>
+
+</main>
+
+<footer>
+  Serverless Container Deployment Platform — Cloud Computing Major Project<br>
+  GSSIPU Semester 8 · Mayank Swaraj<br>
+  <a href="https://github.com/mayankswaraj18cr-cmd" target="_blank">GitHub</a> ·
+  <a href="https://linkedin.com/in/mayank-swaraj-4b84b6410" target="_blank">LinkedIn</a>
+</footer>
+
+<script>
+// Auto-scaling model: 1 container handles up to ~1000 concurrent users
+const USERS_PER_CONTAINER = 1000;
+let currentInstances = 1;
+
+const slider = document.getElementById('userSlider');
+const userCount = document.getElementById('userCount');
+const instanceValue = document.getElementById('instanceValue');
+const cpuValue = document.getElementById('cpuValue');
+const respValue = document.getElementById('respValue');
+const statusValue = document.getElementById('statusValue');
+const statusDot = document.getElementById('statusDot');
+const containerGrid = document.getElementById('containerGrid');
+const logBox = document.getElementById('logBox');
+
+function log(msg, cls){
+  const div = document.createElement('div');
+  div.className = cls || '';
+  const time = new Date().toLocaleTimeString('en-IN', {hour12:false});
+  div.textContent = `[${time}] ${msg}`;
+  logBox.appendChild(div);
+  logBox.scrollTop = logBox.scrollHeight;
+}
+
+function renderContainers(count, prevCount){
+  containerGrid.innerHTML = '';
+  for(let i=0;i<count;i++){
+    const box = document.createElement('div');
+    box.className = 'container-box' + (i >= prevCount ? ' new' : '');
+    box.textContent = '📦';
+    containerGrid.appendChild(box);
+  }
+}
+
+function update(){
+  const users = parseInt(slider.value);
+  userCount.textContent = `${users.toLocaleString('en-IN')} users`;
+
+  const neededInstances = Math.max(1, Math.ceil(users / USERS_PER_CONTAINER));
+  const cpu = Math.min(96, Math.round((users / (neededInstances * USERS_PER_CONTAINER)) * 85) + 8);
+  const resp = Math.round(70 + (cpu > 80 ? (cpu - 80) * 6 : 0) + Math.random()*10);
+
+  cpuValue.textContent = `${cpu}%`;
+  cpuValue.className = 'value ' + (cpu > 75 ? 'warn' : 'ok');
+  respValue.textContent = `${resp}ms`;
+
+  if(neededInstances !== currentInstances){
+    const scaling = neededInstances > currentInstances;
+    statusValue.textContent = scaling ? 'Scaling Up' : 'Scaling Down';
+    statusDot.className = 'status-dot scaling';
+    log(
+      scaling
+        ? `Traffic threshold exceeded — launching container ${currentInstances+1}${neededInstances-currentInstances>1?'..'+neededInstances:''}`
+        : `Traffic reduced — terminating idle container(s), scaling to ${neededInstances}`,
+      scaling ? 'warn-line' : 'ok-line'
+    );
+    renderContainers(neededInstances, currentInstances);
+    currentInstances = neededInstances;
+    setTimeout(() => {
+      statusValue.textContent = 'Running';
+      statusDot.className = 'status-dot';
+    }, 600);
+  }
+
+  instanceValue.textContent = currentInstances;
+}
+
+slider.addEventListener('input', update);
+
+document.getElementById('toggleDockerBtn').addEventListener('click', () => {
+  const box = document.getElementById('dockerBox');
+  const btn = document.getElementById('toggleDockerBtn');
+  const show = box.style.display === 'none';
+  box.style.display = show ? 'block' : 'none';
+  btn.textContent = show ? 'Hide' : 'Show';
+});
+
+document.getElementById('toggleScaleBtn').addEventListener('click', () => {
+  const box = document.getElementById('scaleBox');
+  const btn = document.getElementById('toggleScaleBtn');
+  const show = box.style.display === 'none';
+  box.style.display = show ? 'block' : 'none';
+  btn.textContent = show ? 'Hide' : 'Show';
+});
+
+// init
+renderContainers(1, 0);
+log('Deployment initialized — 1 container running', 'ok-line');
+update();
+</script>
+
+</body>
+</html>
